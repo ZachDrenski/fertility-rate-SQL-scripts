@@ -1,0 +1,122 @@
+/*
+
+World Bank Health Population Dataset found in BigQuery's public datasets
+
+Skills used: Joins, aggregated functions, and subqueries within the SELECT, FROM, and WHERE clauses
+
+Data exploration using Google BigQuery
+
+*/
+
+--Using a subquery in the SELECT clause
+SELECT  
+    health.country_name, 
+    country.income_group AS current_income_group,
+    health.indicator_name, 
+    health.value, 
+    health.year, 
+        (
+            SELECT
+                AVG(value) 
+            FROM 
+                `bigquery-public-data.world_bank_health_population.health_nutrition_population`
+            WHERE
+                indicator_name = 'Fertility rate, total (births per woman)' AND 
+                year >= 2018
+        ) AS world_average_since_2018
+FROM 
+    `bigquery-public-data.world_bank_health_population.health_nutrition_population` AS health
+INNER JOIN 
+    `bigquery-public-data.world_bank_health_population.country_summary` AS country
+ON health.country_code = country.country_code
+WHERE
+    indicator_name = 'Fertility rate, total (births per woman)' AND 
+    year >= 1999
+ORDER BY 1, 5;
+
+--Using a subquery in the FROM clause GROUP BY country and income group
+SELECT 
+    country_name,
+    current_income_group,
+    AVG(value) AS two_decade_avg,
+    two_decade_avg_world
+FROM 
+    (
+        SELECT  
+            health.country_name, 
+            country.income_group AS current_income_group,
+            health.indicator_name, 
+            health.value, 
+            health.year, 
+                (
+                    SELECT
+                        AVG(value) 
+                    FROM 
+                        `bigquery-public-data.world_bank_health_population.health_nutrition_population`
+                    WHERE
+                        indicator_name = 'Fertility rate, total (births per woman)' AND 
+                        year >= 1999
+                ) AS two_decade_avg_world
+        FROM 
+            `bigquery-public-data.world_bank_health_population.health_nutrition_population` AS health
+        INNER JOIN 
+            `bigquery-public-data.world_bank_health_population.country_summary` AS country
+        ON health.country_code = country.country_code
+        WHERE
+            indicator_name = 'Fertility rate, total (births per woman)' AND 
+            year >= 1999
+        ORDER BY 1, 5
+    ) AS sub_table
+GROUP BY country_name, current_income_group, two_decade_avg_world;
+
+--Using a subquery in the FROM clause GROUP BY income group
+SELECT 
+    current_income_group,
+    AVG(value) AS two_decade_avg,
+    two_decade_avg_world
+FROM 
+    (
+        SELECT  
+            health.country_name, 
+            country.income_group AS current_income_group,
+            health.indicator_name, 
+            health.value, 
+            health.year, 
+                (
+                    SELECT
+                        AVG(value) 
+                    FROM 
+                        `bigquery-public-data.world_bank_health_population.health_nutrition_population`
+                    WHERE
+                        indicator_name = 'Fertility rate, total (births per woman)' AND 
+                        year >= 1999
+                ) AS two_decade_avg_world
+        FROM 
+            `bigquery-public-data.world_bank_health_population.health_nutrition_population` AS health
+        INNER JOIN 
+            `bigquery-public-data.world_bank_health_population.country_summary` AS country
+        ON health.country_code = country.country_code
+        WHERE
+            indicator_name = 'Fertility rate, total (births per woman)' AND 
+            year >= 1999
+        ORDER BY 1, 5
+    ) AS sub_table
+WHERE current_income_group IS NOT NULL
+GROUP BY current_income_group, two_decade_avg_world
+ORDER BY 2;
+
+--Using a subquery in the WHERE clause
+SELECT *
+FROM
+    `bigquery-public-data.world_bank_health_population.health_nutrition_population` 
+WHERE 
+    indicator_name IN
+        (
+            SELECT 
+                indicator_name
+            FROM 
+                `bigquery-public-data.world_bank_health_population.series_summary` 
+            WHERE
+                topic = 'Reproductive health'
+        )
+        ORDER BY 1, 3, 6;
